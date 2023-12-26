@@ -1,0 +1,5 @@
+﻿  main.c
+C:\Users\uliaa\OneDrive\Desktop\Юля\1 university\KP 9\KP9 v2\main.c(522,10): warning C4101: 'buffer': unreferenced local variable
+C:\Users\uliaa\OneDrive\Desktop\Юля\1 university\KP 9\KP9 v2\main.c(548,9): warning C4047: 'return': 'FILE *' differs in levels of indirection from 'int'
+C:\Users\uliaa\OneDrive\Desktop\Юля\1 university\KP 9\KP9 v2\main.c(581,23): warning C4047: '==': 'size_t' differs in levels of indirection from 'void *'
+  KP9 v2.vcxproj -> C:\Users\uliaa\OneDrive\Desktop\Юля\1 university\KP 9\KP9 v2\x64\Debug\KP9 v2.exe
