@@ -82,7 +82,7 @@ bool is_restriction_valid(int num, int low_lim, int up_lim) {
     }
     return true;
 }
-//МОЖЛИВО зробити табличкою
+
 int menu() {
     int option = 0;
     printf(BLUE"Hello, dear user! This is the program for working with files\n\n"RESET);
@@ -103,12 +103,7 @@ int menu() {
 
 bool has_sgn(FILE* file) {
     char firstLine[SGN_LEN + 1];
-    if (fgets(firstLine, sizeof(firstLine), file) != NULL) {
-        if (strcmp(firstLine, SGN) == 0) {
-            return true;
-        }
-    }
-    return false;
+    return (fgets(firstLine, sizeof(firstLine), file) != NULL && strcmp(firstLine, SGN) == 0);
 }
 
 bool is_exist(char* filename) {
@@ -517,11 +512,7 @@ int insert_by_index(FILE* fl, record rec_arr[], int ind_arr[], int new_ind, reco
         return ERROR;
     }
     fprintf(tmp_f, "%s\n", SGN);
-
-    int current_record = 1;
-    char buffer[MAX_CHARS];
     fseek(fl, SGN_LEN + 2, SEEK_SET);
-    bool is_inserted = false;
     for (int i = 0; i < n; i++) {
         if (ind_arr[i] != new_ind) {
             fprintf(tmp_f, "%d)\t%-15s\t%-30.10lf\t%-10.10lf\n", ind_arr[i], rec_arr[i].name, rec_arr[i].square, rec_arr[i].population);
@@ -579,11 +570,12 @@ int create_file() {
     else {
         size_t write_sgn = fwrite(sign, sizeof(sign), 1, file);
         if (write_sgn == NULL) {
+            fclose(file);
             return ERROR;
         }
-        fclose(file);
-        printf(GREEN"File was created successfully!\n"RESET);
     }
+    printf(GREEN"File was created successfully!\n"RESET);
+    fclose(file);
     return 0;
 }
 
@@ -663,6 +655,7 @@ int create_record() {
 
     if (rec == NULL) {
         printf(RED"Memory allocation error!\n"RESET);
+        fclose(fl);
         return ERROR;
     }
     int start_ind = get_num_of_records(fl) + 1;
@@ -789,6 +782,7 @@ int sort_record() {
     record* rec = (record*)calloc(num, sizeof(record));
     int* index_arr = (int*)calloc(num, sizeof(int));
     if (rec == NULL || index_arr == NULL) {
+        fclose(fl);
         printf(RED"Error! Memory allocation failed\n"RESET);
         return ERROR;
     }
@@ -822,11 +816,12 @@ int insert_record() {
         fclose(fl);
         return 0;
     }
-    int num = get_num_of_records(fl), parameter = 0, choice = 0;
+    int num = get_num_of_records(fl);
     fseek(fl, SGN_LEN + 2, SEEK_SET);
     record* rec_arr = (record*)calloc(num, sizeof(record));
     int* index_arr = (int*)calloc(num, sizeof(int));
     if (rec_arr == NULL || index_arr == NULL) {
+        fclose(fl);
         printf(RED"Error! Memory allocation failed\n"RESET);
         return ERROR;
     }
