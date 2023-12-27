@@ -6,7 +6,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <sys/stat.h>
-
 #define RED "\x1b[31m"
 #define BLUE "\x1b[36m"
 #define RESET "\x1b[0m"
@@ -291,6 +290,12 @@ void read_data(record* ptr) {
     do {
         printf(BLUE"Enter the population: "RESET);
     } while (!is_input_valid(&(ptr->population), " %n%lf%c"));
+}
+
+void read_input(int* inp_ptr, char* message) {
+    do {
+        printf(BLUE"%s: "RESET, message);
+    } while (!is_input_valid(inp_ptr, " %n%d%c") || !is_recordnum_valid(*inp_ptr));
 }
 
 int change_files(char* filename1, char* filename2) {
@@ -647,7 +652,6 @@ int create_record() {
     record* rec = (record*)safe_calloc(num, sizeof(record));
     int start_ind = get_num_of_records(fl) + 1;
     int end_ind = start_ind + num;
-
     for (int i = start_ind; i < end_ind; i++) {
         read_data(&rec[i]);
         fseek(fl, 0, SEEK_END);
@@ -670,12 +674,8 @@ int read_record() {
         return 0;
     }
     int ind_rec = 0, num_rec = 0;
-    do { 
-        printf(BLUE"Enter the index of the 1st record you want to read: "RESET);
-    } while (!is_input_valid(&ind_rec, " %n%d%c") || !is_recordnum_valid(ind_rec));
-    do {
-        printf(BLUE"Enter the number of records you want to read: "RESET);
-    } while (!is_input_valid(&num_rec, " %n%d%c") || !is_recordnum_valid(num_rec));
+    read_input(&ind_rec, "Enter the index of the 1st record you want to read: ");
+    read_input(&num_rec, "Enter the number of records you want to read: ");
     char buffer[MAX_CHARS];
     int end_index = ind_rec + num_rec;
     int num_of_rec = get_num_of_records(fl);
@@ -719,9 +719,7 @@ int edit_record() {
     sprintf(tmp_fl, "%s.txt", tmp_fn);
     FILE* tmp_f = create_temp_file(tmp_fl);
     int ind_rec = 0;
-    do {
-        printf(BLUE"Enter the index of the record you want to edit: "RESET);
-    } while (!is_input_valid(&ind_rec, " %n%d%c") || !is_recordnum_valid(ind_rec));
+    read_input(&ind_rec, "Enter the index of the record you want to edit: ");
     int total = get_num_of_records(fl);
     if (!is_rec_exist(ind_rec, total)) {
         return ERROR;
@@ -854,9 +852,7 @@ int delete_record() {
     }
 
     int index = 0;
-    do {
-        printf(BLUE"Enter the index of the record you want to delete: "RESET);
-    } while (!is_input_valid(&index, " %n%d%c") || !is_recordnum_valid(index));
+    read_input(&index, "Enter the index of the record you want to delete: ");
     int num = get_num_of_records(fl);
     if (!is_rec_exist(index, num)) {
         fclose(fl);
@@ -959,3 +955,4 @@ int main() {
     } while (!is_esc());
     return 0;
 }
+
