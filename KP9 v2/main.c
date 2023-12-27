@@ -824,16 +824,22 @@ int insert_record() {
             return ERROR;
         }
         if (insert_by_index(fl, rec_arr, index_arr, index_of_new_rec, rec, num) != 0) {
+            free(rec_arr);
+            free(index_arr);
             fclose(fl);
             return ERROR;
         }
     }
     else {
         printf(BLUE"Please, come back to the menu and sort the records in some way!\n"RESET);
+        free(rec_arr);
+        free(index_arr);
         fclose(fl);
         return 0;
     }
     printf(GREEN"The record was successfully inserted!\n"RESET);
+    free(rec_arr);
+    free(index_arr);
     return 0;
 }
 
