@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
+#include <sys/stat.h>
 
 #define RED "\x1b[31m"
 #define BLUE "\x1b[36m"
@@ -17,26 +18,18 @@
 #define R_CODE 114
 #define S_CODE 115
 #define P_CODE 112
-
 #define MAX_REC 10
 #define MAX_CHARS 100
-#define NAME_LEN 10
+#define NAME_LEN 11
 #define ERROR -1
 #define SGN "program9"
 #define SGN_LEN 8
+#define EXTENSION_LEN 4
 
-char current_filename[NAME_LEN + 4] = "";
-
+char current_filename[NAME_LEN + EXTENSION_LEN] = "";
+size_t max_len = NAME_LEN + EXTENSION_LEN;
 enum menu_opt {
-    CREATE_FILE = 1,
-    READ_FILE = 2,
-    DELETE_FILE = 3,
-    CREATE_RECORD = 4,
-    READ_RECORD = 5,
-    EDIT_RECORD = 6,
-    SORT_RECORD = 7,
-    INSERT_RECORD = 8,
-    DELETE_RECORD = 9,
+    CREATE_FILE = 1, READ_FILE, DELETE_FILE, CREATE_RECORD, READ_RECORD, EDIT_RECORD, SORT_RECORD, INSERT_RECORD, DELETE_RECORD
 };
 
 typedef struct {
@@ -106,22 +99,18 @@ bool has_sgn(FILE* file) {
     return (fgets(firstLine, sizeof(firstLine), file) != NULL && strcmp(firstLine, SGN) == 0);
 }
 
-bool is_exist(char* filename) {
-    FILE* file = fopen(filename, "r");
-    if (file == NULL) {
-        return false;
-    }
-    fclose(file);
-    return true;
+bool is_exist(const char* filename) {
+    struct stat file;
+    return (stat(filename, &file) == 0);
 }
 
-void set_name() {
+FILE* open_file(const char* mode) {
     char new_name[NAME_LEN];
     if (strlen(current_filename) == 0 || !is_exist(current_filename)) {
         do {
             printf(BLUE"Enter file name (no spaces allowed): "RESET);
-        } while (!is_input_valid(&new_name, " %n%s%c"));
-        sprintf(current_filename, "%s.txt", new_name);
+        } while (!is_input_valid(&new_name, " %n%10s%c"));
+        snprintf(current_filename, max_len, "%s.txt", new_name);
     }
     else {
         printf(BLUE"Current file: %s\n", current_filename);
@@ -130,14 +119,10 @@ void set_name() {
         if (choice != ENTER) {
             do {
                 printf(BLUE"Enter new file name (no spaces allowed): "RESET);
-            } while (!is_input_valid(&new_name, " %n%s%c"));
-            sprintf(current_filename, "%s.txt", new_name);
+            } while (!is_input_valid(&new_name, " %n%10s%c"));
+            snprintf(current_filename, max_len, "%s.txt", new_name);
         }
     }
-}
-
-FILE* start_function(const char* mode) {
-    set_name();
     if (!is_exist(current_filename)) {
         printf(RED"The file with this name does not exist\n"RESET);
         return NULL;
@@ -555,13 +540,22 @@ int write_to_structure(int n, FILE* fl, record rec_arr[], int num_arr[]) {
     return 0;
 }
 
+void* safe_calloc(int num_elements, size_t element_size) {
+    void* ptr = calloc(num_elements, element_size);
+    if (ptr == NULL) {
+        fprintf(stderr, "Memory allocation error!\n");
+        exit(EXIT_FAILURE);
+    }
+    return ptr;
+}
+
 int create_file() {
     char* sign = SGN;
     char filename[NAME_LEN];
     do {
         printf(BLUE"Enter file name (no spaces allowed): "RESET);
-    } while (!is_input_valid(&filename, " %n%s%c"));
-    sprintf(current_filename, "%s.txt", filename);
+    } while (!is_input_valid(&filename, " %n%10s%c"));
+    snprintf(current_filename, max_len, "%s.txt", filename);
     FILE* file = fopen(current_filename, "w");
     if (file == NULL) {
         printf(RED"Error!\n"RESET);
@@ -580,7 +574,7 @@ int create_file() {
 }
 
 int read_file() {
-    FILE* fl = start_function("r");
+    FILE* fl = open_file("r");
     if (fl == NULL) {
         return ERROR;
     }
@@ -614,7 +608,7 @@ int read_file() {
 }
 
 int delete_file() {
-    FILE* file = start_function("r+");
+    FILE* file = open_file("r+");
     if (file == NULL) {
         return ERROR;
     }
@@ -636,7 +630,7 @@ int delete_file() {
 }
 
 int create_record() {
-    FILE* fl = start_function("a+");
+    FILE* fl = open_file("a+");
     if (fl == NULL) {
         return ERROR;
     }
@@ -645,19 +639,12 @@ int create_record() {
         fclose(fl);
         return 0;
     }
-    record* rec;
     int num = 0;
     do {
         printf(BLUE"Enter the number of records you want to add (1 - %d): "RESET, MAX_REC);
     } while (!is_input_valid(&num, " %n%d%c") || !is_restriction_valid(num, 1, MAX_REC));
 
-    rec = (record*)calloc(num, sizeof(record));
-
-    if (rec == NULL) {
-        printf(RED"Memory allocation error!\n"RESET);
-        fclose(fl);
-        return ERROR;
-    }
+    record* rec = (record*)safe_calloc(num, sizeof(record));
     int start_ind = get_num_of_records(fl) + 1;
     int end_ind = start_ind + num;
 
@@ -673,7 +660,7 @@ int create_record() {
 }
 
 int read_record() {
-    FILE* fl = start_function("r");
+    FILE* fl = open_file("r");
     if (fl == NULL) {
         return ERROR;
     }
@@ -683,7 +670,7 @@ int read_record() {
         return 0;
     }
     int ind_rec = 0, num_rec = 0;
-    do {
+    do { 
         printf(BLUE"Enter the index of the 1st record you want to read: "RESET);
     } while (!is_input_valid(&ind_rec, " %n%d%c") || !is_recordnum_valid(ind_rec));
     do {
@@ -718,7 +705,7 @@ int read_record() {
 }
 
 int edit_record() {
-    FILE* fl = start_function("r");
+    FILE* fl = open_file("r");
     if (fl == NULL) {
         return ERROR;
     }
@@ -763,7 +750,7 @@ int edit_record() {
 }
 
 int sort_record() {
-    FILE* fl = start_function("r+");
+    FILE* fl = open_file("r+");
     if (fl == NULL) {
         return ERROR;
     }
@@ -777,15 +764,9 @@ int sort_record() {
     sprintf(tmp_fl, "%s.txt", tmp_fn);
     FILE* tmp_f = create_temp_file(tmp_fl);
     int num = get_num_of_records(fl);
-
     fseek(fl, SGN_LEN + 2, SEEK_SET);
-    record* rec = (record*)calloc(num, sizeof(record));
-    int* index_arr = (int*)calloc(num, sizeof(int));
-    if (rec == NULL || index_arr == NULL) {
-        fclose(fl);
-        printf(RED"Error! Memory allocation failed\n"RESET);
-        return ERROR;
-    }
+    record* rec = (record*)safe_calloc(num, sizeof(record));
+    int* index_arr = (int*)safe_calloc(num, sizeof(int));
     if (write_to_structure(num, fl, rec, index_arr) != 0) {
         printf(RED"Error reading records!\n"RESET);
     }
@@ -807,7 +788,7 @@ int sort_record() {
 }
 
 int insert_record() {
-    FILE* fl = start_function("r+");
+    FILE* fl = open_file("r+");
     if (fl == NULL) {
         return ERROR;
     }
@@ -818,8 +799,8 @@ int insert_record() {
     }
     int num = get_num_of_records(fl);
     fseek(fl, SGN_LEN + 2, SEEK_SET);
-    record* rec_arr = (record*)calloc(num, sizeof(record));
-    int* index_arr = (int*)calloc(num, sizeof(int));
+    record* rec_arr = (record*)safe_calloc(num, sizeof(record));
+    int* index_arr = (int*)safe_calloc(num, sizeof(int));
     if (rec_arr == NULL || index_arr == NULL) {
         fclose(fl);
         printf(RED"Error! Memory allocation failed\n"RESET);
@@ -834,18 +815,18 @@ int insert_record() {
         record rec;
         read_data(&rec);
         int index_of_new_rec = 0;
-        switch (param){
-            case R_CODE:
-                index_of_new_rec = find_ind_insert_by_region(rec_arr, rec, num, sorting_method);
-                break;
-            case S_CODE:
-                index_of_new_rec = find_ind_insert_by_square(rec_arr, rec, num, sorting_method);
-                break;
-            case P_CODE:
-                index_of_new_rec = find_ind_insert_by_population(rec_arr, rec, num, sorting_method);
-                break;
-            default:
-                return ERROR;
+        switch (param) {
+        case R_CODE:
+            index_of_new_rec = find_ind_insert_by_region(rec_arr, rec, num, sorting_method);
+            break;
+        case S_CODE:
+            index_of_new_rec = find_ind_insert_by_square(rec_arr, rec, num, sorting_method);
+            break;
+        case P_CODE:
+            index_of_new_rec = find_ind_insert_by_population(rec_arr, rec, num, sorting_method);
+            break;
+        default:
+            return ERROR;
         }
         if (insert_by_index(fl, rec_arr, index_arr, index_of_new_rec, rec, num) != 0) {
             return ERROR;
@@ -861,7 +842,7 @@ int insert_record() {
 }
 
 int delete_record() {
-    FILE* fl = start_function("r+");
+    FILE* fl = open_file("r+");
     if (fl == NULL) {
         return ERROR;
     }
@@ -886,8 +867,8 @@ int delete_record() {
     FILE* tmp_f = create_temp_file(tmp_fl);
     fseek(fl, SGN_LEN + 2, SEEK_SET);
     int new_index = 1;
-    record* rec_arr = (record*)calloc(num, sizeof(record));
-    int* index_arr = (int*)calloc(num, sizeof(int));
+    record* rec_arr = (record*)safe_calloc(num, sizeof(record));
+    int* index_arr = (int*)safe_calloc(num, sizeof(int));
     if (write_to_structure(num, fl, rec_arr, index_arr) != 0) {
         printf(RED"Error reading records!\n"RESET);
     }
@@ -897,6 +878,8 @@ int delete_record() {
             new_index++;
         }
     }
+    free(rec_arr);
+    free(index_arr);
     fclose(fl);
     fclose(tmp_f);
     if (change_files(current_filename, tmp_fl) != 0) {
@@ -906,7 +889,7 @@ int delete_record() {
     return 0;
 }
 
-void work(handler, ch) {
+void worker(int handler, int ch) {
     switch (ch) {
     case CREATE_FILE:
         handler = create_file();
@@ -968,10 +951,10 @@ void work(handler, ch) {
 }
 
 int main() {
-    int error_handler = 0;
+    int status_code = 0;
     do {
         int choice = menu();
-        work(error_handler, choice);
+        worker(status_code, choice);
     } while (!is_esc());
     return 0;
 }
