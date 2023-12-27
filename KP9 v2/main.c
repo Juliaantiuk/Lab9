@@ -801,11 +801,6 @@ int insert_record() {
     fseek(fl, SGN_LEN + 2, SEEK_SET);
     record* rec_arr = (record*)safe_calloc(num, sizeof(record));
     int* index_arr = (int*)safe_calloc(num, sizeof(int));
-    if (rec_arr == NULL || index_arr == NULL) {
-        fclose(fl);
-        printf(RED"Error! Memory allocation failed\n"RESET);
-        return ERROR;
-    }
     if (write_to_structure(num, fl, rec_arr, index_arr) != 0) {
         printf(RED"Error reading records!\n"RESET);
     }
@@ -829,6 +824,7 @@ int insert_record() {
             return ERROR;
         }
         if (insert_by_index(fl, rec_arr, index_arr, index_of_new_rec, rec, num) != 0) {
+            fclose(fl);
             return ERROR;
         }
     }
