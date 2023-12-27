@@ -826,7 +826,6 @@ int insert_record() {
         if (insert_by_index(fl, rec_arr, index_arr, index_of_new_rec, rec, num) != 0) {
             free(rec_arr);
             free(index_arr);
-            fclose(fl);
             return ERROR;
         }
     }
