@@ -38,7 +38,7 @@ typedef struct {
 } record;
 
 bool is_esc() {
-    printf(BLUE"Press ESC key to exit, or any other key to do something else: "RESET);
+    printf(BLUE"\nPress ESC key to exit, or any other key to do something else: "RESET);
     int escChoice = _getch();
     printf("\n");
     system("cls");
@@ -261,8 +261,8 @@ int get_num_of_records(FILE* file) {
     while (fgets(buffer, sizeof(buffer), file) != NULL) {
         num++;
     }
-
-    return num - 1;
+    int num_of_rec = (num - 1) >= 0 ? num - 1 : 0;
+    return num_of_rec;
 }
 
 bool is_rec_exist(int rec_index, int num_of_rec) {
@@ -493,15 +493,30 @@ int find_ind_insert_by_population(record records[], record new_record, int n, in
     return new_index + 1;
 }
 
-int insert_by_index(FILE* fl, record rec_arr[], int ind_arr[], int new_ind, record new_record, int n) {
+char* set_tmp_filename() {
     char* tmp_fn = "tmp";
-    char tmp_fl[NAME_LEN + 4];
-    sprintf(tmp_fl, "%s.txt", tmp_fn);
-    FILE* tmp_f = fopen(tmp_fl, "w");
-    if (tmp_f == NULL) {
+    int name_ln = strlen(tmp_fn) + EXTENSION_LEN;
+    char* tmp_filename = (char*)calloc(name_ln, sizeof(char));
+    if (tmp_filename == NULL) {
+        fprintf(stderr, "Memory allocation error!\n");
+        exit(EXIT_FAILURE);
+    }
+    sprintf(tmp_filename, "%s.txt", tmp_fn);
+    return tmp_filename;
+}
+
+FILE* create_temp_file(char* tmp_name) {
+    FILE* tmp_ptr = fopen(tmp_name, "w");
+    if (tmp_ptr == NULL) {
         return ERROR;
     }
-    fprintf(tmp_f, "%s\n", SGN);
+    fprintf(tmp_ptr, "%s\n", SGN);
+    return tmp_ptr;
+}
+
+int insert_by_index(FILE* fl, record rec_arr[], int ind_arr[], int new_ind, record new_record, int n) {
+    char* tmp_fl = set_tmp_filename();
+    FILE* tmp_f = create_temp_file(tmp_fl);
     fseek(fl, SGN_LEN + 2, SEEK_SET);
     for (int i = 0; i < n; i++) {
         if (ind_arr[i] != new_ind) {
@@ -521,15 +536,6 @@ int insert_by_index(FILE* fl, record rec_arr[], int ind_arr[], int new_ind, reco
         return ERROR;
     }
     return 0;
-}
-
-FILE* create_temp_file(char* tmp_name) {
-    FILE* tmp_ptr = fopen(tmp_name, "w");
-    if (tmp_ptr == NULL) {
-        return ERROR;
-    }
-    fprintf(tmp_ptr, "%s\n", SGN);
-    return tmp_ptr;
 }
 
 int write_to_structure(int n, FILE* fl, record rec_arr[], int num_arr[]) {
@@ -552,6 +558,12 @@ void* safe_calloc(int num_elements, size_t element_size) {
         exit(EXIT_FAILURE);
     }
     return ptr;
+}
+
+void finish_function(record* rec_arr, int* int_arr, FILE* f_ptr) {
+    free(rec_arr);
+    free(int_arr);
+    fclose(f_ptr);
 }
 
 int create_file() {
@@ -597,16 +609,7 @@ int read_file() {
     }
     print_header();
     while (fgets(buffer, sizeof(buffer), fl) != NULL) {
-        record rec;
-        if (sscanf(buffer, "%d)\t%s\t%lf\t%lf", &index, rec.name, &rec.square, &rec.population) == 4) {
-            printf("%d) ", index);
-            printf("   %-15s%-30.10lf%-10.10lf\n", rec.name, rec.square, rec.population);
-        }
-        else {
-            printf(RED"Error reading file content.\n"RESET);
-            fclose(fl);
-            return ERROR;
-        }
+        printf("%s", buffer);
     }
     fclose(fl);
     return 0;
@@ -650,12 +653,12 @@ int create_record() {
     } while (!is_input_valid(&num, " %n%d%c") || !is_restriction_valid(num, 1, MAX_REC));
 
     record* rec = (record*)safe_calloc(num, sizeof(record));
-    int start_ind = get_num_of_records(fl) + 1;
-    int end_ind = start_ind + num;
-    for (int i = start_ind; i < end_ind; i++) {
+    int ind = get_num_of_records(fl) + 1;
+    for (int i = 0; i < num; i++) {
         read_data(&rec[i]);
         fseek(fl, 0, SEEK_END);
-        fprintf(fl, "\n%d)\t%-15s\t%-30.10lf\t%-10.10lf", i + 1, rec[i].name, rec[i].square, rec[i].population);
+        fprintf(fl, "\n%d)\t%-15s\t%-30.10lf\t%-10.10lf", ind, rec[i].name, rec[i].square, rec[i].population);
+        ind++;
     }
     fclose(fl);
     printf(GREEN"The record was successful!\n"RESET);
@@ -674,33 +677,27 @@ int read_record() {
         return 0;
     }
     int ind_rec = 0, num_rec = 0;
-    read_input(&ind_rec, "Enter the index of the 1st record you want to read: ");
-    read_input(&num_rec, "Enter the number of records you want to read: ");
-    char buffer[MAX_CHARS];
+    read_input(&ind_rec, "Enter the index of the 1st record you want to read");
+    read_input(&num_rec, "Enter the number of records you want to read");
     int end_index = ind_rec + num_rec;
     int num_of_rec = get_num_of_records(fl);
-    if (!is_rec_exist(end_index, num_of_rec)) {
+    if (!is_rec_exist(end_index - 1, num_of_rec)) {
+        fclose(fl);
         return ERROR;
     }
     fseek(fl, SGN_LEN + 2, SEEK_SET);
-    record rec;
-    int current_rec = ind_rec, index = 0;
+    record* rec = (record*)safe_calloc(num_of_rec, sizeof(record));
+    int* index_arr = (int*)safe_calloc(num_of_rec, sizeof(int));
     print_header();
-    while (fgets(buffer, sizeof(buffer), fl) != NULL && current_rec < end_index) {
-        if (sscanf(buffer, "%d)%10s%lf%lf", &index, rec.name, &rec.square, &rec.population) == 4) {
-            if (index == current_rec) {
-                printf("%d) ", index);
-                printf("   %-15s%-30.10lf%-10.10lf\n", rec.name, rec.square, rec.population);
-                current_rec++;
-            }
-        }
-        else {
-            printf(RED"Error reading file content.\n"RESET);
-            fclose(fl);
-            return ERROR;
-        }
+    if (write_to_structure(num_of_rec, fl, rec, index_arr) != 0) {
+        printf(RED"Error reading records!\n"RESET);
+        finish_function(rec, index_arr, fl);
+        return ERROR;
     }
-    fclose(fl);
+    for (int i = ind_rec - 1; i < end_index - 1; i++) {
+        printf("%d)\t%-15s\t%-30.10lf\t%-10.10lf\n", index_arr[i], rec[i].name, rec[i].square, rec[i].population);
+    }
+    finish_function(rec, index_arr, fl);
     return 0;
 }
 
@@ -714,31 +711,33 @@ int edit_record() {
         fclose(fl);
         return 0;
     }
-    char* tmp_fn = "tmp";
-    char tmp_fl[NAME_LEN + 4];
-    sprintf(tmp_fl, "%s.txt", tmp_fn);
+    char* tmp_fl = set_tmp_filename();
     FILE* tmp_f = create_temp_file(tmp_fl);
     int ind_rec = 0;
-    read_input(&ind_rec, "Enter the index of the record you want to edit: ");
-    int total = get_num_of_records(fl);
-    if (!is_rec_exist(ind_rec, total)) {
+    read_input(&ind_rec, "Enter the index of the record you want to edit");
+    int num_of_rec = get_num_of_records(fl);
+    if (!is_rec_exist(ind_rec, num_of_rec)) {
+        fclose(fl);
         return ERROR;
     }
-    int current_record = 1;
-    char buffer[MAX_CHARS];
     fseek(fl, SGN_LEN + 2, SEEK_SET);
-    while (fgets(buffer, sizeof(buffer), fl) != NULL) {
-        if (current_record != ind_rec) {
-            fprintf(tmp_f, "%s", buffer);
+    record* rec = (record*)safe_calloc(num_of_rec, sizeof(record));
+    int* index_arr = (int*)safe_calloc(num_of_rec, sizeof(int));
+    if (write_to_structure(num_of_rec, fl, rec, index_arr) != 0) {
+        printf(RED"Error reading records!\n"RESET);
+        finish_function(rec, index_arr, fl);
+        return ERROR;
+    }
+    for (int i = 0; i < num_of_rec; i++) {
+        if (index_arr[i] != ind_rec) {
+            fprintf(tmp_f, "%d)\t%-15s\t%-30.10lf\t%-10.10lf\n", index_arr[i], rec[i].name, rec[i].square, rec[i].population);
         }
         else {
-            record rec;
-            read_data(&rec);
-            fprintf(tmp_f, "%d)\t%-15s\t%-30.10lf\t%-10.10lf\n", current_record, rec.name, rec.square, rec.population);
+            read_data(&rec[i]);
+            fprintf(tmp_f, "%d)\t%-15s\t%-30.10lf\t%-10.10lf\n", index_arr[i], rec[i].name, rec[i].square, rec[i].population);
         }
-        current_record++;
     }
-    fclose(fl);
+    finish_function(rec, index_arr, fl);
     fclose(tmp_f);
     if (change_files(current_filename, tmp_fl) != 0) {
         return ERROR;
@@ -757,9 +756,7 @@ int sort_record() {
         fclose(fl);
         return 0;
     }
-    char* tmp_fn = "tmp";
-    char tmp_fl[NAME_LEN + 4];
-    sprintf(tmp_fl, "%s.txt", tmp_fn);
+    char* tmp_fl = set_tmp_filename();
     FILE* tmp_f = create_temp_file(tmp_fl);
     int num = get_num_of_records(fl);
     fseek(fl, SGN_LEN + 2, SEEK_SET);
@@ -767,6 +764,8 @@ int sort_record() {
     int* index_arr = (int*)safe_calloc(num, sizeof(int));
     if (write_to_structure(num, fl, rec, index_arr) != 0) {
         printf(RED"Error reading records!\n"RESET);
+        finish_function(rec, index_arr, fl);
+        return ERROR;
     }
     int parameter = read_parameter_choice();
     int sorting = read_sorting_choice();
@@ -774,10 +773,8 @@ int sort_record() {
     for (int i = 0; i < num; i++) {
         fprintf(tmp_f, "%d)\t%-15s\t%-30.10lf\t%-10.10lf\n", index_arr[i], rec[i].name, rec[i].square, rec[i].population);
     }
-    free(rec);
-    free(index_arr);
-    fclose(fl);
     fclose(tmp_f);
+    finish_function(rec, index_arr, fl);
     if (change_files(current_filename, tmp_fl) != 0) {
         return ERROR;
     }
@@ -801,6 +798,7 @@ int insert_record() {
     int* index_arr = (int*)safe_calloc(num, sizeof(int));
     if (write_to_structure(num, fl, rec_arr, index_arr) != 0) {
         printf(RED"Error reading records!\n"RESET);
+        return ERROR;
     }
     int param = read_parameter_choice();
     int sorting_method = read_sorting_choice();
@@ -826,17 +824,12 @@ int insert_record() {
             free(index_arr);
             return ERROR;
         }
+        printf(GREEN"The record was successfully inserted!\n"RESET);
     }
     else {
         printf(BLUE"Please, come back to the menu and sort the records in some way!\n"RESET);
-        free(rec_arr);
-        free(index_arr);
-        fclose(fl);
-        return 0;
     }
-    printf(GREEN"The record was successfully inserted!\n"RESET);
-    free(rec_arr);
-    free(index_arr);
+    finish_function(rec_arr, index_arr, fl);
     return 0;
 }
 
@@ -858,9 +851,7 @@ int delete_record() {
         fclose(fl);
         return ERROR;
     }
-    char* tmp_fn = "tmp";
-    char tmp_fl[NAME_LEN + 4];
-    sprintf(tmp_fl, "%s.txt", tmp_fn);
+    char* tmp_fl = set_tmp_filename();
     FILE* tmp_f = create_temp_file(tmp_fl);
     fseek(fl, SGN_LEN + 2, SEEK_SET);
     int new_index = 1;
@@ -868,6 +859,8 @@ int delete_record() {
     int* index_arr = (int*)safe_calloc(num, sizeof(int));
     if (write_to_structure(num, fl, rec_arr, index_arr) != 0) {
         printf(RED"Error reading records!\n"RESET);
+        finish_function(rec_arr, index_arr, fl);
+        return ERROR;
     }
     for (int i = 0; i < num; i++) {
         if (index_arr[i] != index) {
@@ -875,9 +868,7 @@ int delete_record() {
             new_index++;
         }
     }
-    free(rec_arr);
-    free(index_arr);
-    fclose(fl);
+    finish_function(rec_arr, index_arr, fl);
     fclose(tmp_f);
     if (change_files(current_filename, tmp_fl) != 0) {
         return ERROR;
