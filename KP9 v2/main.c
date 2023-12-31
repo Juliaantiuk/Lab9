@@ -1,8 +1,8 @@
 #define _CRT_SECURE_NO_WARNINGS
+#include <stdbool.h>
 #include <stdio.h>
 #include <conio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
 #include <sys/stat.h>
@@ -10,6 +10,7 @@
 #define BLUE "\x1b[36m"
 #define RESET "\x1b[0m"
 #define GREEN "\033[0;32m"
+#define DARK_BLUE "\x1b[34m"
 #define ESC 27
 #define ENTER 13
 #define A_CODE 97
@@ -26,10 +27,10 @@
 #define EXTENSION_LEN 4
 
 char current_filename[NAME_LEN + EXTENSION_LEN] = "";
-size_t max_len = NAME_LEN + EXTENSION_LEN;
-enum menu_opt {
-    CREATE_FILE = 1, READ_FILE, DELETE_FILE, CREATE_RECORD, READ_RECORD, EDIT_RECORD, SORT_RECORD, INSERT_RECORD, DELETE_RECORD
-};
+int max_len = NAME_LEN + EXTENSION_LEN;
+enum main_menu {FILE_MENU = 1, RECORD};
+enum file_menu { CREATE_FILE = 1, READ_FILE, DELETE_FILE }; 
+enum rec_menu { CREATE_RECORD = 1, READ_RECORD, EDIT_RECORD, SORT_RECORD, INSERT_RECORD, DELETE_RECORD};
 
 typedef struct {
     char name[NAME_LEN];
@@ -38,7 +39,7 @@ typedef struct {
 } record;
 
 bool is_esc() {
-    printf(BLUE"\nPress ESC key to exit, or any other key to do something else: "RESET);
+    printf(BLUE"\nPress ESC key to exit, or any other key to go back to the main menu: "RESET);
     int escChoice = _getch();
     printf("\n");
     system("cls");
@@ -75,21 +76,49 @@ bool is_restriction_valid(int num, int low_lim, int up_lim) {
     return true;
 }
 
-int menu() {
+int main_menu() {
     int option = 0;
-    printf(BLUE"Hello, dear user! This is the program for working with files\n\n"RESET);
     do {
-        printf(BLUE"Choose an option:\n\n");
-        printf("%d. Create a file\n", CREATE_FILE);
-        printf("%d. Read a file\n", READ_FILE);
-        printf("%d. Delete a file\n", DELETE_FILE);
-        printf("%d. Create a record in the existing file\n", CREATE_RECORD);
-        printf("%d. Read a record from the existing file\n", READ_RECORD);
-        printf("%d. Edit a record\n", EDIT_RECORD);
-        printf("%d. Sort records\n", SORT_RECORD);
-        printf("%d. Insert in record\n", INSERT_RECORD);
-        printf("%d. Delete a record\n\n"RESET, DELETE_RECORD);
-    } while (!is_input_valid(&option, " %n%d%c") || !is_restriction_valid(option, CREATE_FILE, DELETE_RECORD));
+        system("cls");
+        printf(DARK_BLUE"%d. File menu    |\n", FILE_MENU);
+        printf("________________|\n");
+        printf("%d. Records menu |\n", RECORD);
+        printf("________________|\n"RESET);
+    } while (!is_input_valid(&option, " %n%d%c") || !is_restriction_valid(option, FILE_MENU, RECORD));
+    return option;
+}
+
+int file_menu() {
+    int option = 0;
+    do {
+        system("cls");
+        printf(BLUE"%d. Create a file|\n", CREATE_FILE);
+        printf("________________|\n");
+        printf("%d. Read a file  |\n", READ_FILE);
+        printf("________________|\n");
+        printf("%d. Delete a file|\n", DELETE_FILE);
+        printf("________________|\n"RESET);
+    } while (!is_input_valid(&option, " %n%d%c") || !is_restriction_valid(option, CREATE_FILE, DELETE_FILE));
+    return option;
+}
+
+int record_menu() {
+    int option = 0;
+    do {
+        system("cls");
+        printf(BLUE"%d. Create a record |\n", CREATE_RECORD);
+        printf("___________________|\n");
+        printf("%d. Read a record   |\n", READ_RECORD);
+        printf("___________________|\n");
+        printf("%d. Edit a record   |\n", EDIT_RECORD);
+        printf("___________________|\n");
+        printf("%d. Sort records    |\n", SORT_RECORD);
+        printf("___________________|\n");
+        printf("%d. Insert in record|\n", INSERT_RECORD);
+        printf("___________________|\n");
+        printf("%d. Delete a record |\n", DELETE_RECORD);
+        printf("___________________|\n"RESET);
+    } while (!is_input_valid(&option, " %n%d%c") || !is_restriction_valid(option, CREATE_RECORD, DELETE_RECORD));
     return option;
 }
 
@@ -160,94 +189,59 @@ void swap(record* a, record* b) {
     *b = temp;
 }
 
-void sort_population(record arr[], int num, int ch) {
+bool compare_region(record* a, record* b, int ch) {
     switch (ch) {
-    case A_CODE:
-        for (int i = 0; i < num - 1; i++) {
-            for (int j = 0; j < num - i - 1; j++) {
-                if (arr[j].population > arr[j + 1].population) {
-                    swap(&arr[j], &arr[j + 1]);
-                }
-            }
-        }
-        break;
-    case D_CODE:
-        for (int i = 0; i < num - 1; i++) {
-            for (int j = 0; j < num - i - 1; j++) {
-                if (arr[j].population < arr[j + 1].population) {
-                    swap(&arr[j], &arr[j + 1]);
-                }
-            }
-        }
-        break;
+    case A_CODE: return (strcmp(a->name, b->name) > 0);
+    case D_CODE: return (strcmp(a->name, b->name) < 0);
     default:
-        printf(RED"Error! Can not sort records\n"RESET);
+        printf(RED"Error while sorting!\n"RESET);
+        return false;
     }
 }
 
-void sort_square(record arr[], int num, int ch) {
+bool compare_square(record* a, record* b, int ch) {
     switch (ch) {
-    case A_CODE:
-        for (int i = 0; i < num - 1; i++) {
-            for (int j = 0; j < num - i - 1; j++) {
-                if (arr[j].square > arr[j + 1].square) {
-                    swap(&arr[j], &arr[j + 1]);
-                }
-            }
-        }
-        break;
-    case D_CODE:
-        for (int i = 0; i < num - 1; i++) {
-            for (int j = 0; j < num - i - 1; j++) {
-                if (arr[j].square < arr[j + 1].square) {
-                    swap(&arr[j], &arr[j + 1]);
-                }
-            }
-        }
-        break;
+    case A_CODE: return (a->square > b->square);
+    case D_CODE: return (a->square < b->square);
     default:
-        printf(RED"Error! Can not sort records\n"RESET);
+        printf(RED"Error while sorting!\n"RESET);
+        return false;
     }
 }
 
-void sort_region(record arr[], int num, int ch) {
+bool compare_population(record* a, record* b, int ch) {
     switch (ch) {
-    case A_CODE:
-        for (int i = 0; i < num - 1; i++) {
-            for (int j = 0; j < num - i - 1; j++) {
-                if (strcmp(arr[j].name, arr[j + 1].name) > 0) {
-                    swap(&arr[j], &arr[j + 1]);
-                }
-            }
-        }
-        break;
-    case D_CODE:
-        for (int i = 0; i < num - 1; i++) {
-            for (int j = 0; j < num - i - 1; j++) {
-                if (strcmp(arr[j].name, arr[j + 1].name) < 0) {
-                    swap(&arr[j], &arr[j + 1]);
-                }
-            }
-        }
-        break;
+    case A_CODE: return (a->population > b->population);
+    case D_CODE: return (a->population < b->population);
     default:
-        printf(RED"Error! Can not sort records\n"RESET);
+        printf(RED"Error while sorting!\n"RESET);
+        return false;
+    }
+}
+
+void bubblesort(bool (*compare)(record*, record*, int), record arr[], int num, int ch) {
+    for (int i = 0; i < num - 1; i++) {
+        for (int j = 0; j < num - i - 1; j++) {
+            if (compare(&arr[j], &arr[j + 1], ch)) {
+                swap(&arr[j], &arr[j + 1]);
+            }
+        }
     }
 }
 
 void sort_records(record arr[], int n, int par_choice, int sort_choice) {
     switch (par_choice) {
     case R_CODE:
-        sort_region(arr, n, sort_choice);
+        bubblesort(compare_region, arr, n, sort_choice);
         break;
     case S_CODE:
-        sort_square(arr, n, sort_choice);
+        bubblesort(compare_square, arr, n, sort_choice);
         break;
     case P_CODE:
-        sort_population(arr, n, sort_choice);
+        bubblesort(compare_population, arr, n, sort_choice);
         break;
     default:
-        printf(RED"Error while sorting!"RESET);
+        printf(RED"Error in sorting\n"RESET);
     }
 }
 
@@ -311,128 +305,55 @@ int change_files(char* filename1, char* filename2) {
     return 0;
 }
 
-bool is_sorted_by_region_descending(record records[], int n) {
-    for (int i = 0; i < n - 1; i++) {
-        if (strcmp(records[i].name, records[i + 1].name) < 0) {
-            printf(RED"The records are not sorted in descending order by name\n"RESET);
-            return false;
-        }
-    }
-    printf(GREEN"The records are sorted in descending order by name\n"RESET);
-    return true;
-}
-
-bool is_sorted_by_region_ascending(record records[], int n) {
-    for (int i = 0; i < n - 1; i++) {
-        if (strcmp(records[i].name, records[i + 1].name) > 0) {
-            printf(RED"The records are not sorted in ascending order by name\n"RESET);
-            return false;
-        }
-    }
-    printf(GREEN"The records are sorted in ascending order by name\n"RESET);
-    return true;
-}
-
-bool is_sorted_by_square_descending(record records[], int n) {
-    for (int i = 1; i < n - 1; i++) {
-        if (records[i].square < records[i + 1].square) {
-            printf(RED"The records are not sorted in descending order by square\n"RESET);
-            return false;
-        }
-    }
-    printf(GREEN"The records are sorted in descending order by square\n"RESET);
-    return true;
-}
-
-bool is_sorted_by_square_ascending(record records[], int n) {
-    for (int i = 1; i < n - 1; i++) {
-        if (records[i].square > records[i + 1].square) {
-            printf(RED"The records are not sorted in ascending order by square\n"RESET);
-            return false;
-        }
-    }
-    printf(GREEN"The records are sorted in ascending order by square\n"RESET);
-    return true;
-}
-
-bool is_sorted_by_population_descending(record records[], int n) {
-    for (int i = 1; i < n - 1; i++) {
-        if (records[i].population < records[i + 1].population) {
-            printf(GREEN"The records are not sorted in descending order by population\n"RESET);
-            return false;
-        }
-    }
-    printf(GREEN"The records are sorted in descending order by population\n"RESET);
-    return true;
-}
-
-bool is_sorted_by_population_ascending(record records[], int n) {
-    for (int i = 1; i < n - 1; i++) {
-        if (records[i].population > records[i + 1].population) {
-            printf(GREEN"The records are not sorted in ascending order by population\n"RESET);
-            return false;
-        }
-    }
-    printf(GREEN"The records are sorted in ascending order by population\n"RESET);
-    return true;
-}
-
 bool is_sorted(record records[], int n, int parameter, int method) {
-    switch (parameter) {
+    for (int i = 0; i < n - 1; i++) {
+        double compare = 0.0;
+        switch (parameter) {
+        case R_CODE:
+            compare = strcmp(records[i + 1].name, records[i].name);
+            break;
+        case S_CODE:
+            compare = records[i + 1].square - records[i].square;
+            break;
+        case P_CODE:
+            compare = records[i + 1].population - records[i].population;
+            break;
+        default:
+            printf(RED"An error happened while inserting!\n"RESET);
+            return false;
+        }
+        if ((method == A_CODE && compare < 0) || (method == D_CODE && compare > 0)) {
+            printf(RED"The records are not sorted this way!\n"RESET);
+            return false;
+        }
+    }
+    return true;
+}
+
+int find_ind_to_insert(record records[], record new_record, int n, int par, int m) {
+    int new_ind = 0;
+    switch (par) {
     case R_CODE:
-        if (method == A_CODE) {
-            return(is_sorted_by_region_ascending(records, n));
+        for (int i = 0; i < n; i++) {
+            if ((m == A_CODE && strcmp(records[i].name, new_record.name) < 0) ||
+                (m == D_CODE && strcmp(records[i].name, new_record.name) > 0)) {
+                new_ind++;
+            }
         }
-        else if (method == D_CODE) {
-            return(is_sorted_by_region_descending(records, n));
-        }
-        else {
-            printf(RED"An error happened!\n");
-            return false;
-        }
+        break;
     case S_CODE:
-        if (method == A_CODE) {
-            return(is_sorted_by_square_ascending(records, n));
+        for (int i = 0; i < n; i++) {
+            if ((m == A_CODE && records[i].square < new_record.square) ||
+                (m == D_CODE && records[i].square > new_record.square)) {
+                new_ind++;
+            }
         }
-        else if (method == D_CODE) {
-            return(is_sorted_by_square_descending(records, n));
-        }
-        else {
-            printf(RED"An error happened!\n");
-            return false;
-        }
+        break;
     case P_CODE:
-        if (method == A_CODE) {
-            return(is_sorted_by_population_ascending(records, n));
-        }
-        else if (method == D_CODE) {
-            return(is_sorted_by_population_descending(records, n));
-        }
-        else {
-            printf(RED"An error happened!\n");
-            return false;
-        }
-    default:
-        printf(RED"An error happened while inserting!\n"RESET);
-        return false;
-    }
-}
-
-int find_ind_insert_by_region(record records[], record new_record, int n, int parameter) {
-    int new_index = 0;
-    switch (parameter)
-    {
-    case A_CODE:
         for (int i = 0; i < n; i++) {
-            if (strcmp(records[i].name, new_record.name) < 0) {
-                new_index++;
-            }
-        }
-        break;
-    case D_CODE:
-        for (int i = 0; i < n; i++) {
-            if (strcmp(records[i].name, new_record.name) > 0) {
-                new_index++;
+            if ((m == A_CODE && records[i].population < new_record.population) ||
+                (m == D_CODE && records[i].population > new_record.population)) {
+                new_ind++;
             }
         }
         break;
@@ -440,57 +361,7 @@ int find_ind_insert_by_region(record records[], record new_record, int n, int pa
         printf(RED"Error inserting records!\n"RESET);
         return ERROR;
     }
-    return new_index + 1;
-}
-
-int find_ind_insert_by_square(record records[], record new_record, int n, int parameter) {
-    int new_index = 0;
-    switch (parameter)
-    {
-    case A_CODE:
-        for (int i = 0; i < n; i++) {
-            if (records[i].square < new_record.square) {
-                new_index++;
-            }
-        }
-        break;
-    case D_CODE:
-        for (int i = 0; i < n; i++) {
-            if (records[i].square > new_record.square) {
-                new_index++;
-            }
-        }
-        break;
-    default:
-        printf(RED"Error inserting records!\n"RESET);
-        return ERROR;
-    }
-    return new_index + 1;
-}
-
-int find_ind_insert_by_population(record records[], record new_record, int n, int parameter) {
-    int new_index = 0;
-    switch (parameter)
-    {
-    case A_CODE:
-        for (int i = 0; i < n; i++) {
-            if (records[i].population < new_record.population) {
-                new_index++;
-            }
-        }
-        break;
-    case D_CODE:
-        for (int i = 0; i < n; i++) {
-            if (records[i].population > new_record.population) {
-                new_index++;
-            }
-        }
-        break;
-    default:
-        printf(RED"Error inserting records!\n"RESET);
-        return ERROR;
-    }
-    return new_index + 1;
+    return new_ind + 1;
 }
 
 char* set_tmp_filename() {
@@ -518,17 +389,22 @@ int insert_by_index(FILE* fl, record rec_arr[], int ind_arr[], int new_ind, reco
     char* tmp_fl = set_tmp_filename();
     FILE* tmp_f = create_temp_file(tmp_fl);
     fseek(fl, SGN_LEN + 2, SEEK_SET);
+    bool is_inserted = false;
     for (int i = 0; i < n; i++) {
         if (ind_arr[i] != new_ind) {
             fprintf(tmp_f, "%d)\t%-15s\t%-30.10lf\t%-10.10lf\n", ind_arr[i], rec_arr[i].name, rec_arr[i].square, rec_arr[i].population);
         }
         else {
             fprintf(tmp_f, "%d)\t%-15s\t%-30.10lf\t%-10.10lf\n", new_ind, new_record.name, new_record.square, new_record.population);
+            is_inserted = true;
             for (int j = i; j < n; j++) {
                 ind_arr[j] += 1;
             }
             fprintf(tmp_f, "%d)\t%-15s\t%-30.10lf\t%-10.10lf\n", ind_arr[i], rec_arr[i].name, rec_arr[i].square, rec_arr[i].population);
         }
+    }
+    if (!is_inserted) {
+        fprintf(tmp_f, "%d)\t%-15s\t%-30.10lf\t%-10.10lf\n", new_ind, new_record.name, new_record.square, new_record.population);
     }
     fclose(fl);
     fclose(tmp_f);
@@ -601,7 +477,6 @@ int read_file() {
         return 0;
     }
     char buffer[MAX_CHARS];
-    int index = 0;
     if (fgets(buffer, sizeof(buffer), fl) == NULL) {
         printf(GREEN"The file is empty!\n");
         fclose(fl);
@@ -805,18 +680,9 @@ int insert_record() {
     if (is_sorted(rec_arr, num, param, sorting_method)) {
         record rec;
         read_data(&rec);
-        int index_of_new_rec = 0;
-        switch (param) {
-        case R_CODE:
-            index_of_new_rec = find_ind_insert_by_region(rec_arr, rec, num, sorting_method);
-            break;
-        case S_CODE:
-            index_of_new_rec = find_ind_insert_by_square(rec_arr, rec, num, sorting_method);
-            break;
-        case P_CODE:
-            index_of_new_rec = find_ind_insert_by_population(rec_arr, rec, num, sorting_method);
-            break;
-        default:
+        int index_of_new_rec = find_ind_to_insert(rec_arr, rec, num, param, sorting_method);
+        if (index_of_new_rec == ERROR) {
+            finish_function(rec_arr, index_arr, fl);
             return ERROR;
         }
         if (insert_by_index(fl, rec_arr, index_arr, index_of_new_rec, rec, num) != 0) {
@@ -825,9 +691,6 @@ int insert_record() {
             return ERROR;
         }
         printf(GREEN"The record was successfully inserted!\n"RESET);
-    }
-    else {
-        printf(BLUE"Please, come back to the menu and sort the records in some way!\n"RESET);
     }
     finish_function(rec_arr, index_arr, fl);
     return 0;
@@ -845,7 +708,7 @@ int delete_record() {
     }
 
     int index = 0;
-    read_input(&index, "Enter the index of the record you want to delete: ");
+    read_input(&index, "Enter the index of the record you want to delete");
     int num = get_num_of_records(fl);
     if (!is_rec_exist(index, num)) {
         fclose(fl);
@@ -877,59 +740,35 @@ int delete_record() {
     return 0;
 }
 
-void worker(int handler, int ch) {
+void record_worker(int ch) {
     switch (ch) {
-    case CREATE_FILE:
-        handler = create_file();
-        if (handler == ERROR) {
-            printf(RED"File creation error!\n"RESET);
-        }
-        break;
-    case READ_FILE:
-        handler = read_file();
-        if (handler == ERROR) {
-            printf(RED"The file can not be read\n"RESET);
-        }
-        break;
-    case DELETE_FILE:
-        handler = delete_file();
-        if (handler == ERROR) {
-            printf(RED"The file can not be deleted or does not exist at all\n"RESET);
-        }
-        break;
     case CREATE_RECORD:
-        handler = create_record();
-        if (handler == ERROR) {
+        if (create_record() == ERROR) {
             printf(RED"The record can not be made\n"RESET);
         }
         break;
     case READ_RECORD:
-        handler = read_record();
-        if (handler == ERROR) {
+        if (read_record() == ERROR) {
             printf(RED"The record can not be read\n"RESET);
         }
         break;
     case EDIT_RECORD:
-        handler = edit_record();
-        if (handler == ERROR) {
+        if (edit_record() == ERROR) {
             printf(RED"The record can not be edited\n"RESET);
         }
         break;
     case SORT_RECORD:
-        handler = sort_record();
-        if (handler == ERROR) {
+        if (sort_record() == ERROR) {
             printf(RED"The records can not be sorted\n"RESET);
         }
         break;
     case INSERT_RECORD:
-        handler = insert_record();
-        if (handler == ERROR) {
+        if (insert_record() == ERROR) {
             printf(RED"Error while inserting record\n"RESET);
         }
         break;
     case DELETE_RECORD:
-        handler = delete_record();
-        if (handler == ERROR) {
+        if (delete_record() == ERROR) {
             printf(RED"The record can not be deleted\n"RESET);
         }
         break;
@@ -938,12 +777,54 @@ void worker(int handler, int ch) {
     }
 }
 
+void file_worker(int ch) {
+    switch (ch) {
+    case CREATE_FILE:
+        if (create_file() == ERROR) {
+            printf(RED"File creation error!\n"RESET);
+        }
+        break;
+    case READ_FILE:
+        if (read_file() == ERROR) {
+            printf(RED"The file can not be read\n"RESET);
+        }
+        break;
+    case DELETE_FILE:
+        if (delete_file() == ERROR) {
+            printf(RED"The file can not be deleted or does not exist at all\n"RESET);
+        }
+        break;
+    default:
+        printf(RED"Invalid option\n"RESET);
+    }
+}
+
+void worker(int ch) {
+    int option = 0;
+    switch (ch) {
+    case FILE_MENU:
+        option = file_menu();
+        file_worker(option);
+        break;
+    case RECORD:
+        if ((strlen(current_filename) != 0) && is_exist(current_filename)) {
+            option = record_menu();
+            record_worker(option);
+        }
+        else {
+            system("cls");
+            printf(RED"Please, open the file first\n"RESET);
+        }
+        break;
+    default:
+        printf(RED"Invalid option\n"RESET);
+    }
+}
+
 int main() {
-    int status_code = 0;
     do {
-        int choice = menu();
-        worker(status_code, choice);
+        int choice = main_menu();
+        worker(choice);
     } while (!is_esc());
     return 0;
 }
-
